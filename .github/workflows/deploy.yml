@@ -23,5 +23,13 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
+      - name: Stop IIS site
+        run: Stop-Website -Name "data.vonet.org"
+        shell: powershell
+
       - name: Publish to IIS
         run: dotnet publish --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
+
+      - name: Start IIS site
+        run: Start-Website -Name "data.vonet.org"
+        shell: powershell
