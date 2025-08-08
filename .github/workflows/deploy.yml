@@ -9,7 +9,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
 
     - name: Setup .NET
@@ -17,169 +17,21 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
+    - name: Restore
       run: dotnet restore
 
-    - name: Build application
-      run: dotnet build --no-restore --configuration Release
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
 
-    - name: Publish app
-      run: dotnet publish --no-build --configuration Release --output ./publish
+    - name: Publish
+      run: dotnet publish --configuration Release --no-build --output ./publish
 
-    - name: Deploy to IIS using Web Deploy
-      shell: powershell
+    - name: Deploy to IIS
       run: |
-        $ErrorActionPreference = "Stop"
-        
-        # Configuration
-        $siteName = "data.vonet.org"
-        $publishUrl = "${{ secrets.PUBLISH_URL }}"
-        $userName = "${{ secrets.PUBLISH_USERNAME }}"
-        $password = "${{ secrets.PUBLISH_PASSWORD }}"
-        $sourcePath = Join-Path $env:GITHUB_WORKSPACE "publish"
-        
-        Write-Host "🚀 Starting Web Deploy to IIS site: $siteName"
-        Write-Host "📁 Source path: $sourcePath"
-        Write-Host "🌐 Publish URL: $publishUrl"
-        
-        # Test connection
-        Write-Host "🔍 Testing server connection..."
-        try {
-          $uri = [System.Uri]::new($publishUrl)
-          $server = $uri.Host
-          $port = if ($uri.Port -ne -1) { $uri.Port } else { 8172 }
-          
-          Write-Host "Server: $server, Port: $port"
-          
-          $tcpClient = New-Object System.Net.Sockets.TcpClient
-          $asyncResult = $tcpClient.BeginConnect($server, [int]$port, $null, $null)
-          $success = $asyncResult.AsyncWaitHandle.WaitOne(10000)
-          
-          if ($success) {
-            $tcpClient.EndConnect($asyncResult)
-            Write-Host "✅ Connection test successful"
-            $tcpClient.Close()
-          } else {
-            Write-Host "❌ Connection timeout"
-            Write-Host "⚠️ Continuing with deployment..."
-          }
-        }
-        catch {
-          Write-Host "❌ Connection test failed: $($_.Exception.Message)"
-          Write-Host "⚠️ Continuing with deployment..."
-        }
-        
-        # Find MSDeploy
-        $possiblePaths = @(
-          "${env:ProgramFiles}\IIS\Microsoft Web Deploy V4\msdeploy.exe",
-          "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe",
-          "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V4\msdeploy.exe",
-          "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
-        )
-        
-        $msdeployPath = $null
-        foreach ($path in $possiblePaths) {
-          if (Test-Path $path) {
-            $msdeployPath = $path
-            break
-          }
-        }
-        
-        if (-not $msdeployPath) {
-          throw "MSDeploy not found. Web Deploy must be installed."
-        }
-        
-        Write-Host "🔧 Using MSDeploy: $msdeployPath"
-        
-        # Prepare arguments
-        $arguments = @(
-          "-verb:sync",
-          "-source:contentPath=`"$sourcePath`"",
-          "-dest:contentPath=`"$siteName`",computername=`"$publishUrl`",username=`"$userName`",password=`"$password`",authtype=`"Basic`"",
-          "-allowUntrusted",
-          "-enableRule:AppOffline",
-          "-retryAttempts:3",
-          "-retryInterval:5000",
-          "-verbose"
-        )
-        
-        Write-Host "📝 Executing MSDeploy..."
-        Write-Host "Arguments: $($arguments -join ' ' -replace 'password=[^,]*', 'password=***')"
-        
-        try {
-          # Execute MSDeploy
-          $psi = New-Object System.Diagnostics.ProcessStartInfo
-          $psi.FileName = $msdeployPath
-          $psi.Arguments = $arguments -join " "
-          $psi.UseShellExecute = $false
-          $psi.RedirectStandardOutput = $true
-          $psi.RedirectStandardError = $true
-          $psi.CreateNoWindow = $true
-          
-          $process = New-Object System.Diagnostics.Process
-          $process.StartInfo = $psi
-          $process.Start() | Out-Null
-          
-          $stdout = $process.StandardOutput.ReadToEnd()
-          $stderr = $process.StandardError.ReadToEnd()
-          $process.WaitForExit(300000)
-          
-          if ($stdout) {
-            Write-Host "📤 MSDeploy Output:"
-            Write-Host $stdout
-          }
-          
-          if ($stderr) {
-            Write-Host "⚠️ MSDeploy Errors:"
-            Write-Host $stderr
-          }
-          
-          if ($process.ExitCode -eq 0) {
-            Write-Host "✅ Web Deploy completed successfully!"
-          } else {
-            throw "Web Deploy failed with exit code: $($process.ExitCode)"
-          }
-        }
-        catch {
-          Write-Host "❌ Web Deploy failed: $($_.Exception.Message)"
-          Write-Host ""
-          Write-Host "🔍 Troubleshooting checklist:"
-          Write-Host "1. Verify Web Management Service is running"
-          Write-Host "2. Check port 8172 is open in firewall"
-          Write-Host "3. Validate credentials in GitHub secrets"
-          Write-Host "4. Test from Visual Studio first"
-          Write-Host "5. Ensure IIS site exists on server"
-          throw
-        }
-
-    - name: Verify deployment
+        & "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
+          -verb:sync `
+          -source:contentPath="./publish" `
+          -dest:contentPath="${{ secrets.IIS_SITE_NAME }}",computername="${{ secrets.IIS_SERVER_URL }}",username="${{ secrets.IIS_USERNAME }}",password="${{ secrets.IIS_PASSWORD }}",authtype="Basic" `
+          -allowUntrusted `
+          -enableRule:AppOffline
       shell: powershell
-      run: |
-        if ("${{ secrets.SITE_URL }}" -ne "") {
-          $siteUrl = "${{ secrets.SITE_URL }}"
-          
-          Write-Host "🔍 Verifying deployment at: $siteUrl"
-          
-          try {
-            Start-Sleep -Seconds 5 # Give IIS a moment to restart
-            
-            $response = Invoke-WebRequest -Uri $siteUrl -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
-            
-            Write-Host "✅ Site verification successful!"
-            Write-Host "   Status Code: $($response.StatusCode)"
-            Write-Host "   Content Length: $($response.Content.Length) bytes"
-            
-            if ($response.Headers["Server"]) {
-              Write-Host "   Server: $($response.Headers["Server"])"
-            }
-            
-          } catch {
-            Write-Warning "⚠️ Site verification failed: $($_.Exception.Message)"
-            Write-Host "This may be normal if:"
-            Write-Host "- Site requires authentication"
-            Write-Host "- Site is still starting up"
-            Write-Host "- Site has specific access requirements"
-          }
-        } else {
-          Write-Host "ℹ️ Skipping site verification (SITE_URL secret not configured)"
-        }
