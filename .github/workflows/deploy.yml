@@ -21,20 +21,5 @@ jobs:
       run: dotnet publish -c Release -o publish
 
     - name: Deploy to IIS
-      # This step directly executes msdeploy.exe using Start-Process
-      # and passes arguments as an array for robustness.
-      # It assumes Web Deploy is correctly configured on the target server
-      # and that the secrets are properly set in GitHub.
       run: |
-        Start-Process -FilePath "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
-          -ArgumentList (
-            "-verb:sync",
-            "-source:contentPath='${{ github.workspace }}\publish'",
-            "-dest:contentPath='data.vonet.org',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic",
-            "-allowUntrusted"
-          ) `
-          -Wait
-      env:
-        PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
-        PUBLISH_USERNAME: ${{ secrets.PUBLISH_USERNAME }}
-        PUBLISH_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
+        Start-Process -FilePath "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -ArgumentList "-verb:sync", "-source:contentPath='${{ github.workspace }}\publish'", "-dest:contentPath='data.vonet.org',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic", "-allowUntrusted" -Wait
