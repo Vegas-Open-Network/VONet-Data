@@ -31,8 +31,8 @@ jobs:
         $publishPath = Join-Path $env:GITHUB_WORKSPACE "publish"
         & "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
           -verb:sync `
-          -source:contentPath="$publishPath" `
-          -dest:contentPath="data.vonet.org",computername="${{ secrets.IIS_SERVER_URL }}",username="${{ secrets.IIS_USERNAME }}",password="${{ secrets.IIS_PASSWORD }}",authtype="Basic" `
+          -source:iisApp="$publishPath" `
+          -dest:iisApp="data.vonet.org",computername="https://4.149.67.68:8172/msdeploy.axd",username="VirtualMachineJ\deployuser",password="${{ secrets.IIS_PASSWORD }}",authtype="Basic" `
           -allowUntrusted `
           -enableRule:AppOffline
       shell: powershell
