@@ -6,33 +6,22 @@ on:
 
 jobs:
   deploy:
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows]
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Restore
-      run: dotnet restore
+      - name: Restore
+        run: dotnet restore
 
-    - name: Build
-      run: dotnet build --configuration Release --no-restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
 
-    - name: Publish
-      run: dotnet publish --configuration Release --no-build --output ./publish
-
-    - name: Deploy to IIS
-      run: |
-        $publishPath = Join-Path $env:GITHUB_WORKSPACE "publish"
-        & "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
-          -verb:sync `
-          -source:iisApp="$publishPath" `
-          -dest:iisApp="data.vonet.org",computername="https://4.149.67.68:8172/msdeploy.axd",username="VirtualMachineJ\deployuser",password="${{ secrets.IIS_PASSWORD }}",authtype="Basic" `
-          -allowUntrusted `
-          -enableRule:AppOffline
-      shell: powershell
+      - name: Publish to IIS
+        run: dotnet publish --configuration Release --no-build --output C:\inetpub\wwwroot\data.vonet.org
