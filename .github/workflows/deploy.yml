@@ -21,16 +21,25 @@ jobs:
       run: dotnet publish -c Release -o publish
 
     - name: Deploy to IIS
-      # This step now includes the AppOffline rule to handle locked files.
+      # This step now explicitly stops and starts the IIS Application Pool
+      # to ensure no files are locked during deployment.
       run: |
         $ErrorActionPreference = "Stop" # Ensure PowerShell stops on errors
+        $appName = "data.vonet.org" # Your IIS website/application name
+        $appPoolName = "data.vonet.org" # Typically the same as your site name, or check IIS Manager
+
         try {
+          Write-Host "Stopping IIS Application Pool '$appPoolName'..."
+          # Stop the application pool to release file locks
+          Stop-WebAppPool -Name $appPoolName -ErrorAction Stop
+
+          Write-Host "Starting MSDeploy deployment..."
           $msdeployArgs = @(
             "-verb:sync",
             "-source:contentPath='${{ github.workspace }}\publish'",
-            "-dest:contentPath='data.vonet.org',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic",
-            "-allowUntrusted",
-            "-enableRule:AppOffline" # This line is added to handle locked files
+            "-dest:contentPath='$appName',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic",
+            "-allowUntrusted"
+            # Removed -enableRule:AppOffline as stopping the App Pool is more robust
           )
           
           # Execute msdeploy and capture its output to temporary files
@@ -62,6 +71,15 @@ jobs:
         } catch {
           Write-Error "An unexpected error occurred during deployment: $_"
           exit 1 # Fail the GitHub Actions step
+        } finally {
+          # Always attempt to start the application pool, even if deployment failed
+          Write-Host "Attempting to start IIS Application Pool '$appPoolName'..."
+          try {
+            Start-WebAppPool -Name $appPoolName -ErrorAction SilentlyContinue # Use SilentlyContinue to avoid failing if already started
+            Write-Host "IIS Application Pool '$appPoolName' started."
+          } catch {
+            Write-Warning "Could not start Application Pool '$appPoolName': $_"
+          }
         }
       env:
         PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
