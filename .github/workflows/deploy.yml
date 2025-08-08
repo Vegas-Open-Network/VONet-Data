@@ -17,71 +17,86 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build application
+      run: dotnet build --no-restore --configuration Release
+
     - name: Publish app
-      run: dotnet publish -c Release -o publish
+      run: dotnet publish --no-build --configuration Release --output ./publish
 
-    - name: Deploy to IIS
-      # This step now explicitly stops and starts the IIS Application Pool
-      # to ensure no files are locked during deployment.
+    - name: Deploy to IIS using Web Deploy
+      shell: powershell
       run: |
-        $ErrorActionPreference = "Stop" # Ensure PowerShell stops on errors
-        $appName = "data.vonet.org" # Your IIS website/application name
-        $appPoolName = "data.vonet.org" # Typically the same as your site name, or check IIS Manager
-
+        $ErrorActionPreference = "Stop"
+        
+        # Configuration
+        $siteName = "data.vonet.org"
+        $publishUrl = "${{ secrets.PUBLISH_URL }}"
+        $userName = "${{ secrets.PUBLISH_USERNAME }}"
+        $password = "${{ secrets.PUBLISH_PASSWORD }}"
+        $sourcePath = Join-Path $env:GITHUB_WORKSPACE "publish"
+        
+        Write-Host "Starting deployment to IIS site: $siteName"
+        Write-Host "Source path: $sourcePath"
+        Write-Host "Publish URL: $publishUrl"
+        
         try {
-          Write-Host "Stopping IIS Application Pool '$appPoolName'..."
-          # Stop the application pool to release file locks
-          Stop-WebAppPool -Name $appPoolName -ErrorAction Stop
-
-          Write-Host "Starting MSDeploy deployment..."
-          $msdeployArgs = @(
+          # Build MSDeploy arguments
+          $msdeployPath = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          
+          # Check if MSDeploy exists
+          if (-not (Test-Path $msdeployPath)) {
+            $msdeployPath = "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+            if (-not (Test-Path $msdeployPath)) {
+              throw "MSDeploy not found. Please ensure Web Deploy is installed on the runner."
+            }
+          }
+          
+          $arguments = @(
             "-verb:sync",
-            "-source:contentPath='${{ github.workspace }}\publish'",
-            "-dest:contentPath='$appName',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic",
-            "-allowUntrusted"
-            # Removed -enableRule:AppOffline as stopping the App Pool is more robust
+            "-source:iisApp=`"$sourcePath`"",
+            "-dest:iisApp=`"$siteName`",computername=`"$publishUrl`",username=`"$userName`",password=`"$password`",authtype=`"Basic`"",
+            "-allowUntrusted",
+            "-enableRule:AppOffline",
+            "-retryAttempts:3",
+            "-retryInterval:5000",
+            "-verbose"
           )
           
-          # Execute msdeploy and capture its output to temporary files
-          $process = Start-Process -FilePath "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
-            -ArgumentList $msdeployArgs `
-            -PassThru `
-            -NoNewWindow `
-            -Wait `
-            -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) `
-            -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+          Write-Host "Executing MSDeploy with arguments:"
+          Write-Host ($arguments -join " ")
           
-          # Read and display output/error streams from the temporary files
-          if ($process.StandardOutput) {
-            Write-Host "MSDeploy Standard Output:"
-            Get-Content $process.StandardOutput | ForEach-Object { Write-Host $_ }
+          # Execute MSDeploy
+          $process = Start-Process -FilePath $msdeployPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+          
+          if ($process.ExitCode -eq 0) {
+            Write-Host "✅ Deployment completed successfully!"
+          } else {
+            throw "MSDeploy failed with exit code: $($process.ExitCode)"
           }
-          if ($process.StandardError) {
-            Write-Error "MSDeploy Standard Error:"
-            Get-Content $process.StandardError | ForEach-Object { Write-Error $_ }
-          }
-
-          # Check the exit code of msdeploy.exe
-          if ($process.ExitCode -ne 0) {
-            Write-Error "MSDeploy process exited with code $($process.ExitCode). Deployment failed."
-            exit 1 # Fail the GitHub Actions step
-          }
-          Write-Host "Deployment to IIS completed successfully."
-
+          
         } catch {
-          Write-Error "An unexpected error occurred during deployment: $_"
-          exit 1 # Fail the GitHub Actions step
-        } finally {
-          # Always attempt to start the application pool, even if deployment failed
-          Write-Host "Attempting to start IIS Application Pool '$appPoolName'..."
-          try {
-            Start-WebAppPool -Name $appPoolName -ErrorAction SilentlyContinue # Use SilentlyContinue to avoid failing if already started
-            Write-Host "IIS Application Pool '$appPoolName' started."
-          } catch {
-            Write-Warning "Could not start Application Pool '$appPoolName': $_"
-          }
+          Write-Error "❌ Deployment failed: $($_.Exception.Message)"
+          throw
         }
-      env:
-        PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
-        PUBLISH_USERNAME: ${{ secrets.PUBLISH_USERNAME }}
-        PUBLISH_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
+
+    - name: Verify deployment
+      shell: powershell
+      run: |
+        $siteUrl = "https://${{ secrets.SITE_URL }}" # Add this secret with your site URL
+        
+        try {
+          Write-Host "Verifying deployment by checking site availability..."
+          $response = Invoke-WebRequest -Uri $siteUrl -UseBasicParsing -TimeoutSec 30
+          
+          if ($response.StatusCode -eq 200) {
+            Write-Host "✅ Site is responding successfully (Status: $($response.StatusCode))"
+          } else {
+            Write-Warning "⚠️ Site responded with status: $($response.StatusCode)"
+          }
+        } catch {
+          Write-Warning "⚠️ Could not verify site availability: $($_.Exception.Message)"
+          Write-Host "This might be normal if the site requires authentication or specific headers."
+        }
