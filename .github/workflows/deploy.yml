@@ -22,7 +22,7 @@ jobs:
 
     - name: Deploy to IIS
       run: |
-        msdeploy.exe -verb:sync `
+        "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -verb:sync `
           -source:contentPath='${{ github.workspace }}\publish' `
           -dest:contentPath='data.vonet.org',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic `
           -allowUntrusted
