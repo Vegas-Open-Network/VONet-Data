@@ -38,65 +38,188 @@ jobs:
         $password = "${{ secrets.PUBLISH_PASSWORD }}"
         $sourcePath = Join-Path $env:GITHUB_WORKSPACE "publish"
         
-        Write-Host "Starting deployment to IIS site: $siteName"
-        Write-Host "Source path: $sourcePath"
-        Write-Host "Publish URL: $publishUrl"
+        Write-Host "🚀 Starting Web Deploy to IIS site: $siteName"
+        Write-Host "📁 Source path: $sourcePath"
+        Write-Host "🌐 Publish URL: $publishUrl"
+        
+        # Extract server info for diagnostics
+        if ($publishUrl -match "^https?://([^:/]+):?(\d*)") {
+          $server = $matches[1]
+          $port = if ($matches[2]) { $matches[2] } else { "8172" }
+          
+          Write-Host "🔍 Testing connection to $server`:$port..."
+          try {
+            $tcpClient = New-Object System.Net.Sockets.TcpClient
+            $asyncResult = $tcpClient.BeginConnect($server, [int]$port, $null, $null)
+            $success = $asyncResult.AsyncWaitHandle.WaitOne(10000) # 10 second timeout
+            
+            if ($success) {
+              $tcpClient.EndConnect($asyncResult)
+              Write-Host "✅ Connection test successful"
+              $tcpClient.Close()
+            } else {
+              Write-Host "❌ Connection timeout - Web Management Service may not be running"
+              Write-Host "⚠️ Continuing with deployment attempt..."
+            }
+          } catch {
+            Write-Host "❌ Connection test failed: $($_.Exception.Message)"
+            Write-Host "⚠️ Continuing with deployment attempt..."
+          }
+        }
         
         try {
-          # Build MSDeploy arguments
-          $msdeployPath = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          # Find MSDeploy executable
+          $possiblePaths = @(
+            "${env:ProgramFiles}\IIS\Microsoft Web Deploy V4\msdeploy.exe",
+            "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe",
+            "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V4\msdeploy.exe",
+            "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          )
           
-          # Check if MSDeploy exists
-          if (-not (Test-Path $msdeployPath)) {
-            $msdeployPath = "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
-            if (-not (Test-Path $msdeployPath)) {
-              throw "MSDeploy not found. Please ensure Web Deploy is installed on the runner."
+          $msdeployPath = $null
+          foreach ($path in $possiblePaths) {
+            if (Test-Path $path) {
+              $msdeployPath = $path
+              break
             }
           }
           
+          if (-not $msdeployPath) {
+            throw "MSDeploy not found. Web Deploy must be installed on the GitHub runner."
+          }
+          
+          Write-Host "🔧 Using MSDeploy: $msdeployPath"
+          
+          # Prepare deployment arguments
           $arguments = @(
             "-verb:sync",
-            "-source:iisApp=`"$sourcePath`"",
-            "-dest:iisApp=`"$siteName`",computername=`"$publishUrl`",username=`"$userName`",password=`"$password`",authtype=`"Basic`"",
+            "-source:contentPath=`"$sourcePath`"",
+            "-dest:contentPath=`"$siteName`",computername=`"$publishUrl`",username=`"$userName`",password=`"$password`",authtype=`"Basic`"",
             "-allowUntrusted",
             "-enableRule:AppOffline",
             "-retryAttempts:3",
             "-retryInterval:5000",
-            "-verbose"
+            "-verbose",
+            "-whatif:false"
           )
           
-          Write-Host "Executing MSDeploy with arguments:"
-          Write-Host ($arguments -join " ")
+          Write-Host "📝 MSDeploy arguments:"
+          foreach ($arg in $arguments) {
+            if ($arg -notlike "*password=*") {
+              Write-Host "   $arg"
+            } else {
+              Write-Host "   $($arg -replace 'password=[^,]*', 'password=***')"
+            }
+          }
           
-          # Execute MSDeploy
-          $process = Start-Process -FilePath $msdeployPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+          Write-Host ""
+          Write-Host "🚀 Executing Web Deploy..."
           
+          # Execute MSDeploy with detailed output capture
+          $psi = New-Object System.Diagnostics.ProcessStartInfo
+          $psi.FileName = $msdeployPath
+          $psi.Arguments = $arguments -join " "
+          $psi.UseShellExecute = $false
+          $psi.RedirectStandardOutput = $true
+          $psi.RedirectStandardError = $true
+          $psi.CreateNoWindow = $true
+          
+          $process = New-Object System.Diagnostics.Process
+          $process.StartInfo = $psi
+          
+          # Start process and capture output
+          $process.Start() | Out-Null
+          
+          $stdout = $process.StandardOutput.ReadToEnd()
+          $stderr = $process.StandardError.ReadToEnd()
+          
+          $process.WaitForExit(300000) # 5 minute timeout
+          
+          # Display output
+          if ($stdout) {
+            Write-Host "📤 MSDeploy Output:"
+            Write-Host $stdout
+          }
+          
+          if ($stderr) {
+            Write-Host "⚠️ MSDeploy Errors/Warnings:"
+            Write-Host $stderr
+          }
+          
+          # Check result
           if ($process.ExitCode -eq 0) {
-            Write-Host "✅ Deployment completed successfully!"
+            Write-Host "✅ Web Deploy completed successfully!"
+            
+            # Parse output for deployment statistics
+            if ($stdout -match "Total changes: (\d+)") {
+              Write-Host "📊 Files changed: $($matches[1])"
+            }
+            if ($stdout -match "Bytes copied: (\d+)") {
+              Write-Host "📊 Bytes transferred: $($matches[1])"
+            }
+            
           } else {
-            throw "MSDeploy failed with exit code: $($process.ExitCode)"
+            throw "Web Deploy failed with exit code: $($process.ExitCode)"
           }
           
         } catch {
-          Write-Error "❌ Deployment failed: $($_.Exception.Message)"
+          Write-Host ""
+          Write-Host "❌ Web Deploy failed: $($_.Exception.Message)"
+          Write-Host ""
+          Write-Host "🔍 Troubleshooting checklist:"
+          Write-Host "1. ✓ Verify Web Management Service is running on your server"
+          Write-Host "2. ✓ Confirm port 8172 is open in server firewall"
+          Write-Host "3. ✓ Check that Web Deploy 3.6+ is installed on server"
+          Write-Host "4. ✓ Validate publish profile credentials in GitHub secrets"
+          Write-Host "5. ✓ Test deployment from Visual Studio first"
+          Write-Host "6. ✓ Ensure IIS site '$siteName' exists on the server"
+          Write-Host ""
+          
+          # Additional diagnostic info
+          if ($stderr -like "*ERROR_DESTINATION_NOT_REACHABLE*") {
+            Write-Host "💡 Connection issue detected. Check:"
+            Write-Host "   - Web Management Service is started"
+            Write-Host "   - Server allows remote connections"
+            Write-Host "   - Correct server URL and port"
+          }
+          if ($stderr -like "*ERROR_USER_UNAUTHORIZED*") {
+            Write-Host "💡 Authentication issue detected. Check:"
+            Write-Host "   - Username and password are correct"
+            Write-Host "   - User has IIS Manager permissions"
+            Write-Host "   - User has delegation permissions for the site"
+          }
+          
           throw
         }
 
     - name: Verify deployment
       shell: powershell
       run: |
-        $siteUrl = "https://${{ secrets.SITE_URL }}" # Add this secret with your site URL
-        
-        try {
-          Write-Host "Verifying deployment by checking site availability..."
-          $response = Invoke-WebRequest -Uri $siteUrl -UseBasicParsing -TimeoutSec 30
+        if ("${{ secrets.SITE_URL }}" -ne "") {
+          $siteUrl = "${{ secrets.SITE_URL }}"
           
-          if ($response.StatusCode -eq 200) {
-            Write-Host "✅ Site is responding successfully (Status: $($response.StatusCode))"
-          } else {
-            Write-Warning "⚠️ Site responded with status: $($response.StatusCode)"
+          Write-Host "🔍 Verifying deployment at: $siteUrl"
+          
+          try {
+            Start-Sleep -Seconds 5 # Give IIS a moment to restart
+            
+            $response = Invoke-WebRequest -Uri $siteUrl -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
+            
+            Write-Host "✅ Site verification successful!"
+            Write-Host "   Status Code: $($response.StatusCode)"
+            Write-Host "   Content Length: $($response.Content.Length) bytes"
+            
+            if ($response.Headers["Server"]) {
+              Write-Host "   Server: $($response.Headers["Server"])"
+            }
+            
+          } catch {
+            Write-Warning "⚠️ Site verification failed: $($_.Exception.Message)"
+            Write-Host "This may be normal if:"
+            Write-Host "- Site requires authentication"
+            Write-Host "- Site is still starting up"
+            Write-Host "- Site has specific access requirements"
           }
-        } catch {
-          Write-Warning "⚠️ Could not verify site availability: $($_.Exception.Message)"
-          Write-Host "This might be normal if the site requires authentication or specific headers."
+        } else {
+          Write-Host "ℹ️ Skipping site verification (SITE_URL secret not configured)"
         }
