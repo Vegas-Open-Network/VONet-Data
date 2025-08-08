@@ -43,28 +43,28 @@ jobs:
         Write-Host "🌐 Publish URL: $publishUrl"
         
         # Extract server info for diagnostics
-        if ($publishUrl -match "^https?://([^:/]+):?(\d*)") {
-          $server = $matches[1]
-          $port = if ($matches[2]) { $matches[2] } else { "8172" }
+        try {
+          $uri = [System.Uri]::new($publishUrl)
+          $server = $uri.Host
+          $port = if ($uri.Port -ne -1) { $uri.Port } else { 8172 }
           
           Write-Host "🔍 Testing connection to $server`:$port..."
-          try {
-            $tcpClient = New-Object System.Net.Sockets.TcpClient
-            $asyncResult = $tcpClient.BeginConnect($server, [int]$port, $null, $null)
-            $success = $asyncResult.AsyncWaitHandle.WaitOne(10000) # 10 second timeout
-            
-            if ($success) {
-              $tcpClient.EndConnect($asyncResult)
-              Write-Host "✅ Connection test successful"
-              $tcpClient.Close()
-            } else {
-              Write-Host "❌ Connection timeout - Web Management Service may not be running"
-              Write-Host "⚠️ Continuing with deployment attempt..."
-            }
-          } catch {
-            Write-Host "❌ Connection test failed: $($_.Exception.Message)"
+          
+          $tcpClient = New-Object System.Net.Sockets.TcpClient
+          $asyncResult = $tcpClient.BeginConnect($server, [int]$port, $null, $null)
+          $success = $asyncResult.AsyncWaitHandle.WaitOne(10000) # 10 second timeout
+          
+          if ($success) {
+            $tcpClient.EndConnect($asyncResult)
+            Write-Host "✅ Connection test successful"
+            $tcpClient.Close()
+          } else {
+            Write-Host "❌ Connection timeout - Web Management Service may not be running"
             Write-Host "⚠️ Continuing with deployment attempt..."
           }
+        } catch {
+          Write-Host "❌ Connection test failed: $($_.Exception.Message)"
+          Write-Host "⚠️ Continuing with deployment attempt..."
         }
         
         try {
