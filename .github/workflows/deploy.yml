@@ -20,6 +20,15 @@ jobs:
     - name: Publish app
       run: dotnet publish -c Release -o publish
 
-    - name: Deploy to IIS
-      run: |
-        Start-Process -FilePath "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -ArgumentList "-verb:sync", "-source:contentPath='${{ github.workspace }}\publish'", "-dest:contentPath='data.vonet.org',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic", "-allowUntrusted" -Wait
+- name: Deploy to IIS
+  run: |
+    try {
+      Invoke-Expression -Command '"C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -verb:sync "-source:contentPath=''${{ github.workspace }}\publish''" "-dest:contentPath=''data.vonet.org'',ComputerName=''${{ secrets.PUBLISH_URL }}'',UserName=''${{ secrets.PUBLISH_USERNAME }}'',Password=''${{ secrets.PUBLISH_PASSWORD }}'',AuthType=Basic" -allowUntrusted'
+    } catch {
+      Write-Error "Deployment failed: $_"
+      exit 1
+    }
+  env:
+    PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
+    PUBLISH_USERNAME: ${{ secrets.PUBLISH_USERNAME }}
+    PUBLISH_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
