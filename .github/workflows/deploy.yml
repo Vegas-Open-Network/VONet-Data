@@ -2,7 +2,7 @@ name: Deploy to IIS
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master ]  # make sure you're pushing to master
 
 jobs:
   deploy:
@@ -15,14 +15,14 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '8.0.x'  # match your app’s version
+        dotnet-version: '8.0.x'  # change to your project's actual version if needed
 
     - name: Publish app
       run: dotnet publish -c Release -o publish
 
     - name: Deploy to IIS
       run: |
-        msdeploy.exe ^
+        "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" ^
           -source:contentPath="publish" ^
           -dest:contentPath="data.vonet.org",ComputerName="%PUBLISH_URL%",UserName="%PUBLISH_USERNAME%",Password="%PUBLISH_PASSWORD%",AuthType="Basic" ^
           -verb:sync ^
