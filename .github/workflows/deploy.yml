@@ -20,15 +20,51 @@ jobs:
     - name: Publish app
       run: dotnet publish -c Release -o publish
 
-- name: Deploy to IIS
-  run: |
-    try {
-      Invoke-Expression -Command '"C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -verb:sync "-source:contentPath=''${{ github.workspace }}\publish''" "-dest:contentPath=''data.vonet.org'',ComputerName=''${{ secrets.PUBLISH_URL }}'',UserName=''${{ secrets.PUBLISH_USERNAME }}'',Password=''${{ secrets.PUBLISH_PASSWORD }}'',AuthType=Basic" -allowUntrusted'
-    } catch {
-      Write-Error "Deployment failed: $_"
-      exit 1
-    }
-  env:
-    PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
-    PUBLISH_USERNAME: ${{ secrets.PUBLISH_USERNAME }}
-    PUBLISH_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
+    - name: Deploy to IIS
+      # Using Start-Process with ArgumentList is generally more robust for external executables.
+      # We're also redirecting output to capture any msdeploy errors.
+      run: |
+        $ErrorActionPreference = "Stop" # Ensure PowerShell stops on errors
+        try {
+          $msdeployArgs = @(
+            "-verb:sync",
+            "-source:contentPath='${{ github.workspace }}\publish'",
+            "-dest:contentPath='data.vonet.org',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic",
+            "-allowUntrusted"
+          )
+          
+          # Execute msdeploy and capture its output
+          $process = Start-Process -FilePath "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
+            -ArgumentList $msdeployArgs `
+            -PassThru `
+            -NoNewWindow `
+            -Wait `
+            -RedirectStandardOutput ([System.IO.Path]::GetTempFileName()) `
+            -RedirectStandardError ([System.IO.Path]::GetTempFileName())
+          
+          # Read and display output/error streams
+          if ($process.StandardOutput) {
+            Write-Host "MSDeploy Standard Output:"
+            Get-Content $process.StandardOutput | ForEach-Object { Write-Host $_ }
+          }
+          if ($process.StandardError) {
+            Write-Error "MSDeploy Standard Error:"
+            Get-Content $process.StandardError | ForEach-Object { Write-Error $_ }
+          }
+
+          # Check the exit code of msdeploy.exe
+          if ($process.ExitCode -ne 0) {
+            Write-Error "MSDeploy process exited with code $($process.ExitCode)"
+            exit 1 # Fail the GitHub Actions step
+          }
+          Write-Host "Deployment to IIS completed successfully."
+
+        } catch {
+          Write-Error "Deployment failed: $_"
+          exit 1 # Fail the GitHub Actions step
+        }
+      # The 'env' block must be at the same indentation level as 'run'
+      env:
+        PUBLISH_URL: ${{ secrets.PUBLISH_URL }}
+        PUBLISH_USERNAME: ${{ secrets.PUBLISH_USERNAME }}
+        PUBLISH_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
