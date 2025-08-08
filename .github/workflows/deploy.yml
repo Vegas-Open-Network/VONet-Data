@@ -15,7 +15,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '8.0.x'  # use your .NET version
+        dotnet-version: '8.0.x'
 
     - name: Publish app
       run: dotnet publish -c Release -o publish
@@ -23,7 +23,7 @@ jobs:
     - name: Deploy to IIS
       run: |
         & "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
-          -source:contentPath="publish" `
+          -source:contentPath="$(pwd)\publish" `
           -dest:contentPath=data.vonet.org,ComputerName=$env:PUBLISH_URL,UserName=$env:PUBLISH_USERNAME,Password=$env:PUBLISH_PASSWORD,AuthType=Basic `
           -verb:sync `
           -allowUntrusted
