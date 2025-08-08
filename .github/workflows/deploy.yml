@@ -21,8 +21,7 @@ jobs:
       run: dotnet publish -c Release -o publish
 
     - name: Deploy to IIS
-      # This step now includes robust error handling and output capture
-      # to display detailed messages from msdeploy.exe in the logs.
+      # This step now includes the AppOffline rule to handle locked files.
       run: |
         $ErrorActionPreference = "Stop" # Ensure PowerShell stops on errors
         try {
@@ -30,7 +29,8 @@ jobs:
             "-verb:sync",
             "-source:contentPath='${{ github.workspace }}\publish'",
             "-dest:contentPath='data.vonet.org',ComputerName='${{ secrets.PUBLISH_URL }}',UserName='${{ secrets.PUBLISH_USERNAME }}',Password='${{ secrets.PUBLISH_PASSWORD }}',AuthType=Basic",
-            "-allowUntrusted"
+            "-allowUntrusted",
+            "-enableRule:AppOffline" # This line is added to handle locked files
           )
           
           # Execute msdeploy and capture its output to temporary files
