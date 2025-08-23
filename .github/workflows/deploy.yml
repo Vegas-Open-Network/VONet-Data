@@ -23,7 +23,7 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
-           - name: Stop App Pool
+      - name: Stop App Pool
         run: Stop-WebAppPool -Name "data.vonet.org"
         shell: powershell
 
