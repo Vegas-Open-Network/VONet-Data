@@ -2,7 +2,7 @@ name: Deploy to IIS
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   deploy:
@@ -23,40 +23,25 @@ jobs:
       - name: Build Application
         run: dotnet build --configuration Release --no-restore
 
-      - name: Stop IIS Site and App Pool
+      - name: Stop Application Pool
         shell: powershell
-        run: |
-          # Stop the website first to release all connections
-          Stop-Website -Name "data.vonet.org" -ErrorAction SilentlyContinue
-          # Then stop the app pool
-          Stop-WebAppPool -Name "data.vonet.org" -ErrorAction SilentlyContinue
-          Write-Host "IIS site and app pool 'data.vonet.org' stopped."
+        run: Stop-WebAppPool -Name "data.vonet.org" -ErrorAction SilentlyContinue
 
       - name: Publish to IIS
         run: dotnet publish "VONet-Data/VONetData.csproj" --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
 
-      - name: Set Environment Variables in IIS
+      - name: Set Connection String in IIS
         shell: powershell
         run: |
           Import-Module WebAdministration
-          
-          # Set the ASP.NET Core environment to Production
-          Set-ItemProperty -Path "IIS:\AppPools\data.vonet.org" -Name "environmentVariables" -Value @{ Name = "ASPNETCORE_ENVIRONMENT"; Value = "Production" }
-          
-          # Add or update the connection string
           $connectionString = "${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}"
           if (-not $connectionString) {
             throw "Connection string secret is not set!"
           }
-          Set-ItemProperty -Path "IIS:\AppPools\data.vonet.org" -Name "environmentVariables" -Value @{ Name = "ConnectionStrings__DefaultConnection"; Value = $connectionString }
-          
+          # Set the connection string and environment on the App Pool
+          Set-ItemProperty -Path "IIS:\AppPools\data.vonet.org" -Name "environmentVariables" -Value @{ Name = "ASPNETCORE_ENVIRONMENT"; Value = "Production" }, @{ Name = "ConnectionStrings__DefaultConnection"; Value = $connectionString }
           Write-Host "Successfully set environment variables for App Pool 'data.vonet.org'."
 
-      - name: Start IIS Site and App Pool
+      - name: Restart Application Pool
         shell: powershell
-        run: |
-          # Start the app pool first
-          Start-WebAppPool -Name "data.vonet.org"
-          # Then start the website
-          Start-Website -Name "data.vonet.org"
-          Write-Host "IIS app pool and site 'data.vonet.org' started."
+        run: Restart-WebAppPool -Name "data.vonet.org"
