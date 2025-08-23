@@ -31,8 +31,6 @@
     var losMap = L.map('los-map').setView([36.1699, -115.1398], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '© OpenStreetMap'
-    }).addTo(losMap);
     // Example: Add a marker for demonstration
     L.marker([36.1699, -115.1398]).addTo(losMap).bindPopup('Las Vegas Center');
 </script>
