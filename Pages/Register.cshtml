@@ -1,0 +1,26 @@
+@page
+@model VONetData.Pages.RegisterModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<div class="max-w-md mx-auto bg-white rounded shadow p-8 mt-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">Register</h2>
+    <form method="post" class="space-y-6">
+        <input asp-for="Input.Email" class="w-full border rounded px-3 py-2 mb-2" placeholder="Email" />
+        <input asp-for="Input.Password" class="w-full border rounded px-3 py-2 mb-2" placeholder="Password" type="password" />
+        <input asp-for="Input.ConfirmPassword" class="w-full border rounded px-3 py-2 mb-2" placeholder="Confirm Password" type="password" />
+        <button type="submit" class="w-full bg-yellow-600 text-white py-2 rounded font-semibold hover:bg-yellow-700 transition">Register</button>
+    </form>
+    @if (Model.Success)
+    {
+        <div class="bg-green-100 text-green-800 rounded p-3 mt-4 text-center">Registration successful! You can now <a href='/Login' class='text-blue-600 underline'>log in</a>.</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="bg-red-100 text-red-800 rounded p-3 mt-4 text-center">@Model.ErrorMessage</div>
+    }
+    <div class="mt-4 text-center">
+        <a href="/Login" class="text-blue-600 hover:underline">Already have an account? Login</a>
+    </div>
+</div>

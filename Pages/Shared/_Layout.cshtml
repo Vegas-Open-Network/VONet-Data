@@ -4,48 +4,46 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - VONetData</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/VONetData.styles.css" asp-append-version="true" />
 </head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">VONetData</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
-                        </li>
-                    </ul>
-                </div>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <header class="bg-white shadow">
+        <nav class="container mx-auto flex items-center justify-between py-4">
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-xl text-yellow-600">Vegas Open Network</span>
+                <span class="ml-2 text-gray-600">Data</span>
             </div>
+            <ul class="flex gap-6 text-gray-700">
+                <li><a href="/" class="hover:text-yellow-600">Home</a></li>
+                <li><a href="/FeatureRequest" class="hover:text-yellow-600">Feature Request</a></li>
+                @if (User.Identity?.IsAuthenticated ?? false)
+                {
+                    <li><a href="/UserPanel" class="hover:text-yellow-600">Your Portal</a></li>
+                    <li>
+                        <form method="post" asp-page="/SignOut" class="inline">
+                            <button type="submit" class="hover:text-yellow-600 bg-transparent border-none cursor-pointer">Sign Out</button>
+                        </form>
+                    </li>
+                }
+                else
+                {
+                    <li><a href="/Login" class="hover:text-yellow-600">Login</a></li>
+                    <li><a href="/Register" class="hover:text-yellow-600">Register</a></li>
+                }
+            </ul>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - VONetData - <a asp-area="" asp-page="/Privacy">Privacy</a>
+    <main class="container mx-auto flex-1 py-8">
+        @RenderBody()
+    </main>
+    <footer class="bg-white border-t py-4 mt-8">
+        <div class="container mx-auto text-center text-gray-500">
+            &copy; 2025 - Vegas Open Network Data - <a href="/Privacy" class="text-yellow-600 hover:underline">Privacy</a>
         </div>
     </footer>
-
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-</html>
+</html></html>
