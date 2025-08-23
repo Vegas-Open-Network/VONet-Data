@@ -41,9 +41,9 @@ jobs:
           CONN: ${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}
         run: |
           if (-not $env:CONN) { throw "GitHub secret CONNECTIONSTRINGS__DEFAULTCONNECTION is missing." }
-          setx CONNECTIONSTRINGS__DEFAULTCONNECTION "$env:CONN" /M
+          set CONNECTIONSTRINGS__DEFAULTCONNECTION "$env:CONN" /M
           # Optional: set environment name
-          setx ASPNETCORE_ENVIRONMENT "Production" /M
+          set ASPNETCORE_ENVIRONMENT "Production" /M
 
       # Recycle app pool so it picks up the new env vars
       - name: Restart App Pool
