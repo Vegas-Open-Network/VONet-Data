@@ -38,10 +38,10 @@ jobs:
       - name: Set connection string (machine scope)
         shell: powershell
         env:
-          CONN: ${{ secrets.ConnectionStrings__DefaultConnection }}
+          CONN: ${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}
         run: |
-          if (-not $env:CONN) { throw "GitHub secret ConnectionStrings__DefaultConnection is missing." }
-          setx ConnectionStrings__DefaultConnection "$env:CONN" /M
+          if (-not $env:CONN) { throw "GitHub secret CONNECTIONSTRINGS__DEFAULTCONNECTION is missing." }
+          setx CONNECTIONSTRINGS__DEFAULTCONNECTION "$env:CONN" /M
           # Optional: set environment name
           setx ASPNETCORE_ENVIRONMENT "Production" /M
 
