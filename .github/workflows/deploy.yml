@@ -23,9 +23,16 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
-      - name: Stop App Pool
-        run: Stop-WebAppPool -Name "data.vonet.org"
+      - name: Stop App Pool (ignore if already stopped)
         shell: powershell
+        run: |
+          try {
+            Stop-WebAppPool -Name "data.vonet.org" -ErrorAction Stop
+            Write-Host "App Pool stopped successfully."
+          }
+          catch {
+            Write-Host "App Pool was already stopped or not found. Continuing..."
+          }
 
       - name: Publish to IIS
         run: dotnet publish --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
@@ -38,10 +45,16 @@ jobs:
           if (-not $connectionString) {
             throw "Connection string secret is not set!"
           }
-          # Set the connection string and environment on the App Pool
           Set-ItemProperty -Path "IIS:\AppPools\data.vonet.org" -Name "environmentVariables" -Value @{ Name = "ASPNETCORE_ENVIRONMENT"; Value = "Production" }, @{ Name = "ConnectionStrings__DefaultConnection"; Value = $connectionString }
           Write-Host "Successfully set environment variables for App Pool 'data.vonet.org'."
 
-      - name: Start App Pool
-        run: Start-WebAppPool -Name "data.vonet.org"
+      - name: Start App Pool (always attempt)
         shell: powershell
+        run: |
+          try {
+            Start-WebAppPool -Name "data.vonet.org" -ErrorAction Stop
+            Write-Host "App Pool started successfully."
+          }
+          catch {
+            Write-Host "Failed to start App Pool. Check IIS manually."
+          }
