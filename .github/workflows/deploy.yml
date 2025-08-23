@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted]
 
     steps:
       - name: Checkout code
@@ -17,18 +17,18 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore Dependencies
+      - name: Restore
         run: dotnet restore
 
-      - name: Build Application
+      - name: Build
         run: dotnet build --configuration Release --no-restore
 
-      - name: Stop Application Pool
+      - name: Stop App Pool
+        run: Stop-WebAppPool -Name "data.vonet.org"
         shell: powershell
-        run: Stop-WebAppPool -Name "data.vonet.org" -ErrorAction SilentlyContinue
 
       - name: Publish to IIS
-        run: dotnet publish "VONet-Data/VONetData.csproj" --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
+        run: dotnet publish --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
 
       - name: Set Connection String in IIS
         shell: powershell
@@ -42,6 +42,6 @@ jobs:
           Set-ItemProperty -Path "IIS:\AppPools\data.vonet.org" -Name "environmentVariables" -Value @{ Name = "ASPNETCORE_ENVIRONMENT"; Value = "Production" }, @{ Name = "ConnectionStrings__DefaultConnection"; Value = $connectionString }
           Write-Host "Successfully set environment variables for App Pool 'data.vonet.org'."
 
-      - name: Restart Application Pool
+      - name: Start App Pool
+        run: Start-WebAppPool -Name "data.vonet.org"
         shell: powershell
-        run: Restart-WebAppPool -Name "data.vonet.org"
