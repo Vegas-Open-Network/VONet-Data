@@ -33,7 +33,7 @@ jobs:
           Write-Host "IIS site and app pool 'data.vonet.org' stopped."
 
       - name: Publish to IIS
-        run: dotnet publish --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
+        run: dotnet publish "VONet-Data/VONetData.csproj" --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
 
       - name: Set Environment Variables in IIS
         shell: powershell
