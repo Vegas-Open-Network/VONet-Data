@@ -23,8 +23,16 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
-      - name: Publish to folder
-        run: dotnet publish --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
+           - name: Stop App Pool
+        run: Stop-WebAppPool -Name "vonet.org"
+        shell: powershell
+
+      - name: Publish to IIS
+        run: dotnet publish --configuration Release --no-build --output C:\inetpub\sites\vonet.org
+
+      - name: Start App Pool
+        run: Start-WebAppPool -Name "vonet.org"
+        shell: powershell
 
       # Set env vars IIS will read at runtime
       - name: Set connection string (machine scope)
