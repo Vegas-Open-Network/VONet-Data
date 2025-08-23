@@ -6,53 +6,76 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted]   # Windows self-hosted runner with IIS
-
+    runs-on: self-hosted # Assumes a Windows self-hosted runner with IIS
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
 
-      - name: Restore
-        run: dotnet restore
+    - name: Restore dependencies
+      run: dotnet restore
 
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
+    - name: Build project
+      run: dotnet build --configuration Release --no-restore
 
-      - name: Stop App Pool
-        run: Stop-WebAppPool -Name "data.vonet.org"
-        shell: powershell
+    - name: Deploy to IIS
+      shell: powershell
+      run: |
+        # Define variables
+        $appPoolName = "data.vonet.org"
+        $publishPath = "C:\inetpub\sites\data.vonet.org"
+        $webConfigPath = Join-Path $publishPath "web.config"
+        $connectionString = "${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}"
 
-      - name: Publish to IIS
-        run: dotnet publish --configuration Release --no-build --output C:\inetpub\sites\data.vonet.org
-
-      - name: Start App Pool
-        run: Start-WebAppPool -Name "data.vonet.org"
-        shell: powershell
-
-      # Set env vars 
-      - name: Set machine env vars for IIS
-        shell: powershell
-        run: |
-          $conn = "${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}"
-          if (-not $conn) { throw "Missing secret CONNECTIONSTRINGS__DEFAULTCONNECTION" }
-
-          # write machine-scope env vars IIS reads
-          [System.Environment]::SetEnvironmentVariable("ConnectionStrings__DefaultConnection", $conn, "Machine")
-          [System.Environment]::SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production", "Machine")
-
-          # quick sanity check without leaking value
-          $len = ([System.Environment]::GetEnvironmentVariable("ConnectionStrings__DefaultConnection","Machine") | Measure-Object -Character).Characters
-          Write-Host "Connection string length: $len"
-
-          Import-Module WebAdministration
-          Restart-WebAppPool -Name "data.vonet.org"
-
-      # Recycle app pool so it picks up the new env vars
-      - name: Restart App Pool
-        shell: powershell
-        run: Start-WebAppPool -Name "data.vonet.org"
+        # Check for the secret
+        if (-not $connectionString) {
+          throw "Secret CONNECTIONSTRINGS__DEFAULTCONNECTION not found."
+        }
+        
+        # Stop the application pool to release file locks
+        Write-Host "Stopping App Pool: $appPoolName"
+        Stop-WebAppPool -Name $appPoolName
+        
+        # Publish the application
+        Write-Host "Publishing application to $publishPath"
+        dotnet publish --configuration Release --no-build --output $publishPath
+        
+        # Modify web.config to set environment variables
+        Write-Host "Updating environment variables in $webConfigPath"
+        [xml]$webConfig = Get-Content -Path $webConfigPath
+        
+        # Find or create the environmentVariables node
+        $aspNetCoreNode = $webConfig.configuration.'system.webServer'.aspNetCore
+        $envVarsNode = $aspNetCoreNode.environmentVariables
+        if (-not $envVarsNode) {
+          $envVarsNode = $webConfig.CreateElement("environmentVariables")
+          $aspNetCoreNode.AppendChild($envVarsNode)
+        }
+        
+        # Function to set an environment variable node
+        function Set-EnvironmentVariableNode($parentNode, $name, $value) {
+            $node = $parentNode.SelectSingleNode("environmentVariable[@name='$name']")
+            if (-not $node) {
+                $node = $parentNode.OwnerDocument.CreateElement("environmentVariable")
+                $node.SetAttribute("name", $name)
+                $parentNode.AppendChild($node)
+            }
+            $node.SetAttribute("value", $value)
+        }
+        
+        # Set the environment variables
+        Set-EnvironmentVariableNode -parentNode $envVarsNode -name "ASPNETCORE_ENVIRONMENT" -value "Production"
+        Set-EnvironmentVariableNode -parentNode $envVarsNode -name "ConnectionStrings__DefaultConnection" -value $connectionString
+        
+        # Save the updated web.config
+        $webConfig.Save($webConfigPath)
+        Write-Host "web.config updated successfully."
+        
+        # Start the application pool
+        Write-Host "Starting App Pool: $appPoolName"
+        Start-WebAppPool -Name $appPoolName
