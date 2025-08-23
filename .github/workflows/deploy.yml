@@ -34,16 +34,25 @@ jobs:
         run: Start-WebAppPool -Name "data.vonet.org"
         shell: powershell
 
-      # Set env vars IIS will read at runtime
-      - name: Set connection string (machine scope)
+      # Set env vars 
+      - name: Set machine env vars for IIS
         shell: powershell
-        env:
-          ConnectionStrings__DefaultConnection: ${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}
-          ASPNETCORE_ENVIRONMENT: Production
+        run: |
+          $conn = "${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}"
+          if (-not $conn) { throw "Missing secret CONNECTIONSTRINGS__DEFAULTCONNECTION" }
+
+          # write machine-scope env vars IIS reads
+          [System.Environment]::SetEnvironmentVariable("ConnectionStrings__DefaultConnection", $conn, "Machine")
+          [System.Environment]::SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production", "Machine")
+
+          # quick sanity check without leaking value
+          $len = ([System.Environment]::GetEnvironmentVariable("ConnectionStrings__DefaultConnection","Machine") | Measure-Object -Character).Characters
+          Write-Host "Connection string length: $len"
+
+          Import-Module WebAdministration
+          Restart-WebAppPool -Name "data.vonet.org"
 
       # Recycle app pool so it picks up the new env vars
       - name: Restart App Pool
         shell: powershell
-        run: |
-          Stop-WebAppPool -Name "data.vonet.org"
-          Start-WebAppPool -Name "data.vonet.org"
+        run: Start-WebAppPool -Name "data.vonet.org"
