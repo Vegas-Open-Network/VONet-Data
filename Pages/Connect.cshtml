@@ -31,6 +31,10 @@
                 <label class="text-sm" for="Member_RoofAccess">Check this box if you have roof access</label>
             </div>
             <input asp-for="Member.Referral" class="w-full border rounded px-3 py-2 mb-2" placeholder="How did you hear about us?" />
+            <div class="grid grid-cols-2 gap-2">
+                <input asp-for="Member.Latitude" class="border rounded px-3 py-2" placeholder="Latitude (opt)" />
+                <input asp-for="Member.Longitude" class="border rounded px-3 py-2" placeholder="Longitude (opt)" />
+            </div>
             <div class="flex items-center mb-2">
                 <input asp-for="Member.AcceptedLicense" class="mr-2" type="checkbox" />
                 <label class="text-sm" for="Member_AcceptedLicense">I agree to the <a href="https://networkcommons.org/license/" target="_blank" class="text-blue-600 underline">Network Commons License</a></label>

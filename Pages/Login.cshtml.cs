@@ -43,7 +43,7 @@ namespace VONetData.Pages
             var result = await _signInManager.PasswordSignInAsync(user.UserName, Input.Password, false, lockoutOnFailure: false);
             if (result.Succeeded)
             {
-                return RedirectToPage("/UserPanel");
+                return RedirectToPage("/Index");
             }
             ErrorMessage = "Invalid login attempt.";
             return Page();

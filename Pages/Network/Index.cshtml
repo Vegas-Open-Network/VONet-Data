@@ -1,0 +1,45 @@
+@page
+@model VONetData.Pages.Network.IndexModel
+@{
+    ViewData["Title"] = "Network";
+}
+<h2 class="text-2xl font-bold mb-4">Network Management</h2>
+<p class="text-sm text-gray-600 mb-6">Manage sites (supernodes, nodes, candidates) and links.</p>
+<div class="grid md:grid-cols-2 gap-6">
+    <section class="border rounded bg-white p-4">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="font-semibold">Sites</h3>
+            <a href="/Network/SiteCreate" class="text-blue-700 text-xs hover:underline">Add Site</a>
+        </div>
+        <table class="w-full text-xs">
+            <thead><tr class="text-left border-b"><th>Name</th><th>Type</th><th>Acts</th></tr></thead>
+            <tbody>
+            @foreach (var s in Model.Sites)
+            {
+                <tr class="border-b hover:bg-blue-50">
+                    <td>@s.Name</td>
+                    <td>@s.Type</td>
+                    <td><a class="text-blue-700 hover:underline" href="/Network/Site/@s.Id">Open</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+    <section class="border rounded bg-white p-4">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="font-semibold">Links</h3>
+            <a href="/Network/LinkCreate" class="text-blue-700 text-xs hover:underline">Add Link</a>
+        </div>
+        <table class="w-full text-xs">
+            <thead><tr class="text-left border-b"><th>From</th><th>To</th><th>Medium</th><th>Km</th></tr></thead>
+            <tbody>
+            @foreach (var l in Model.Links)
+            {
+                <tr class="border-b hover:bg-blue-50">
+                    <td>@l.FromSiteId</td><td>@l.ToSiteId</td><td>@l.Medium</td><td>@l.DistanceKm</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+</div>

@@ -12,7 +12,7 @@
     <header class="bg-white border-b">
         <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <span class="material-icons text-yellow-600 text-3xl">settings_input_antenna</span>
+                <span class="material-icons text-blue-700 text-3xl">settings_input_antenna</span>
                 <div>
                     <h1 class="text-xl font-bold text-gray-800">VONet Admin</h1>
                     <p class="text-xs text-gray-500">User Management</p>
@@ -24,7 +24,7 @@
                        placeholder="Search users..."
                        class="border rounded px-3 py-2 text-sm"
                        oninput="filterUsers()" />
-                <button class="bg-yellow-600 text-white px-4 py-2 rounded font-semibold hover:bg-yellow-700 transition">
+                <button class="bg-blue-700 text-white px-4 py-2 rounded font-semibold hover:bg-blue-800 transition">
                     <span class="material-icons align-middle text-base">refresh</span>
                     <span class="align-middle">Refresh</span>
                 </button>
@@ -49,7 +49,7 @@
                 <tbody id="userTable">
                     @foreach (var user in Model.IdentityUsers)
                     {
-                        <tr class="border-b hover:bg-yellow-50">
+                        <tr class="border-b hover:bg-blue-50">
                             <td class="px-4 py-2">@user.Email</td>
                             <td class="px-4 py-2">@user.UserName</td>
                             <td class="px-4 py-2">
@@ -94,7 +94,7 @@
         <section class="mt-10">
             <div class="flex items-center justify-between mb-2">
                 <h3 class="text-lg font-semibold">Recent Feature Requests</h3>
-                <a href="/FeatureRequest" class="text-sm text-yellow-700 hover:underline inline-flex items-center gap-1">
+                <a href="/FeatureRequest" class="text-sm text-blue-700 hover:underline inline-flex items-center gap-1">
                     <span>View all</span>
                     <span class="material-icons text-sm">open_in_new</span>
                 </a>

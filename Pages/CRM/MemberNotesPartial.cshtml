@@ -1,0 +1,7 @@
+@model IEnumerable<VONetData.Models.MemberNote>
+<ul class="space-y-1 text-xs bg-gray-50 border rounded p-2 max-h-64 overflow-y-auto">
+@foreach (var note in Model.OrderByDescending(n=>n.CreatedUtc))
+{
+    <li><span class="text-gray-500">[@note.CreatedUtc.ToString("u")]</span> @note.Text <span class="text-gray-400">@note.AuthorEmail</span></li>
+}
+</ul>

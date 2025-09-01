@@ -32,5 +32,15 @@ namespace VONetData.Models
 
         // Optional: Associated Identity User
         public string? UserId { get; set; } // Foreign key to AspNetUsers.Id
+
+        // Mapping (optional manual entry for now)
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+
+        // CRM workflow
+        [MaxLength(64)]
+        public string? Status { get; set; }
+        [MaxLength(256)]
+        public string? AssignedToEmail { get; set; }
     }
 }

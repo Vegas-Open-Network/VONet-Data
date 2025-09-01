@@ -1,22 +1,28 @@
-html {
-  font-size: 14px;
-}
+html { font-size: 14px; }
+@media (min-width: 768px) { html { font-size: 16px; } }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
+html { position: relative; min-height: 100%; }
+body { margin-bottom: 60px; background: #f9fafb; color:#1f2937; }
+
+a { color:#1d4ed8; }
+a:hover { color:#d97706; }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
-html {
-  position: relative;
-  min-height: 100%;
+input[type=text], input[type=password], input[type=email], select, textarea {
+  border:1px solid #d1d5db; border-radius:6px; padding:.55rem .75rem; background:#fff; color:#111827;
 }
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, select:focus, textarea:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 1px #2563eb40; }
 
-body {
-  margin-bottom: 60px;
-}
+button, .btn-primary { background:#eab308; color:#1f2937; border:none; border-radius:6px; padding:.6rem 1rem; font-weight:600; }
+button:hover, .btn-primary:hover { background:#ca8a04; }
+
+.card { background:#ffffff; border:1px solid #e5e7eb; border-radius:10px; }
+.card-header { border-bottom:1px solid #e5e7eb; font-weight:600; }
+
+.table thead { background:#f3f4f6; }
+.table tbody tr:hover { background:#fef9c3; }
+
+footer a { color:#1d4ed8; }
