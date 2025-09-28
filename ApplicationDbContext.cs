@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using VONetData.Models;
+
 
 namespace VONetData
 {
@@ -10,7 +10,6 @@ namespace VONetData
             : base(options)
         {
         }
-        public DbSet<Member> Members { get; set; }
-        public DbSet<FeatureRequest> FeatureRequests { get; set; }
+        
     }
 }

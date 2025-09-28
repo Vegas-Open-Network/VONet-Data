@@ -4,46 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - VONetData</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/VONetData.styles.css" asp-append-version="true" />
+
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
-    <header class="bg-white shadow">
-        <nav class="container mx-auto flex items-center justify-between py-4">
-            <div class="flex items-center gap-2">
-                <span class="font-bold text-xl text-yellow-600">Vegas Open Network</span>
-                <span class="ml-2 text-gray-600">Data</span>
-            </div>
-            <ul class="flex gap-6 text-gray-700">
-                <li><a href="/" class="hover:text-yellow-600">Home</a></li>
-                <li><a href="/FeatureRequest" class="hover:text-yellow-600">Feature Request</a></li>
-                @if (User.Identity?.IsAuthenticated ?? false)
-                {
-                    <li><a href="/UserPanel" class="hover:text-yellow-600">Your Portal</a></li>
-                    <li>
-                        <form method="post" asp-page="/SignOut" class="inline">
-                            <button type="submit" class="hover:text-yellow-600 bg-transparent border-none cursor-pointer">Sign Out</button>
-                        </form>
-                    </li>
-                }
-                else
-                {
-                    <li><a href="/Login" class="hover:text-yellow-600">Login</a></li>
-                    <li><a href="/Register" class="hover:text-yellow-600">Register</a></li>
-                }
-            </ul>
-        </nav>
-    </header>
-    <main class="container mx-auto flex-1 py-8">
-        @RenderBody()
-    </main>
-    <footer class="bg-white border-t py-4 mt-8">
-        <div class="container mx-auto text-center text-gray-500">
-            <a href="https://vonet.org/">Vegas Open Network (VONet)</a>
-        </div>
-    </footer>
+<body>
+    @RenderBody()
+    
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-</html></html>
+</html>
